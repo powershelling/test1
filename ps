@@ -1,109 +1,54 @@
-###########################
-# Author: 
-# Date: 28/07/2023
-# Version: 0.1 
-# Language: Powershell 
-###########################
+# Define the paths to the two folders containing CSV files
+$remote1 = "C:\Temp\1"
+$remote2 = "C:\Temp\2"
 
-<#
-.SYNOPSIS
-     This script will check if two paths on two servers are available, and merge files with the same name in UTF8 and export the result into a destination path
+# Define the path to the final CSV file
+$finalCsvPath = "C:\temp\FinalResult.csv"
 
-.DESCRIPTION
-    This script will:
-     Check if the paths are available
-     Create a list of file with the same name in a log 
-     Merge files
-
-.VERSION
-    0.1
-
-.DATE
-    Created the 28/07/2023
-
-.PARAMETER SERVER_ONE
-    FQDN path of first server
-
-.PARAMETER SERVER_TWO
-    FQDN path of second server
-
-.PARAMETER SERVER_RESULT
-    FQDN path of the destination server (local)
-
-.PARAMETER CSV_FILE
-    File containing the list of filenames to merge
-#>
-
-#region VARIABLE
-
-$SERVER_ONE = "to do"
-$SERVER_TWO = "to do"
-$SERVER_RESULT = "to do"
-$CSV_FILE = "path\to\your\csvfile.csv"
-
-$logfilepath = "to add\$date.log"
-#endregion
-
-#region FUNCTION
-
-function log {
-    param([string]$message)
+# Check if the final CSV file already exists, and delete it if it does
+if (Test-Path $finalCsvPath) {
+    Remove-Item $finalCsvPath
 }
 
-function merge ($filelist, $SERVER_RESULT){
-    $content = Get-content $filelist[0]
-    $mergedfilename = Split-path -leaf $filelist[0]
+# Get the list of CSV files from each folder
+$csvFiles1 = Get-ChildItem -Path $folderPath1 -Filter "*.csv"
+$csvFiles2 = Get-ChildItem -Path $folderPath2 -Filter "*.csv"
 
-    for ($i = 1; $i -lt $filelist.count; $i++) {
-        $content += [Environment]::Newline
-        $content += Get-content $filelist[$i]
-        $mergedfilename += "_" + (Split-path -leaf $filelist[$i])
+# Log the names of CSV files in folder 1 and folder 2
+Write-Host "CSV files in Folder 1: $($csvFiles1 -join ', ')"
+Write-Host "CSV files in Folder 2: $($csvFiles2 -join ', ')"
+
+# Initialize counters
+$identicalFilesCount = 0
+$differentFilesCount = 0
+
+# Loop through the CSV files in folder 1
+foreach ($file1 in $csvFiles1) {
+    # Check if there is a corresponding CSV file in folder 2 with the same name
+    $file2 = $csvFiles2 | Where-Object { $_.BaseName -eq $file1.BaseName }
+    
+    if ($file2) {
+        # Increment the identical files count and log the file name
+        $identicalFilesCount++
+        Write-Host "Identical files found: $($file1.Name) and $($file2.Name)"
+        
+        # Read the data from both CSV files
+        $data1 = Import-Csv $file1.FullName
+        $data2 = Import-Csv $file2.FullName
+        
+        # Combine the data from both CSV files
+        $combinedData = $data1 + $data2
+        
+        # Export the combined data to the final CSV file
+        $combinedData | Export-Csv -Path $finalCsvPath -Append -NoTypeInformation
     }
-
-    $mergedfilepath = Join-path $SERVER_RESULT $mergedfilename
-    $Content | Out-file -encoding utf8 $mergedfilepath
-    Write-output "Files merged and saved in UTF8 : $mergedfilepath"
-}   
-#endregion
-
-#region OPS
-
-# Start measuring script execution time
-$startTime = Get-Date
-
-# Import the CSV file containing the list of filenames
-$fileList = Import-Csv -Path $CSV_FILE | ForEach-Object { $_.FileName }
-
-# Get a list of each files
-$server1files = $fileList | ForEach-Object { Join-Path $SERVER_ONE $_ }
-$server2files = $fileList | ForEach-Object { Join-Path $SERVER_TWO $_ }
-
-# Write into the log file all files detected
-log "List of files on Server One: "
-log ($server1files | ForEach-Object { $_ })
-
-log "List of files on Server Two: "
-log ($server2files | ForEach-Object { $_ })
-
-# List file with the same name
-$commonfiles = $server1files | Where-Object { $file1 = $_; $server2files | Where-Object { $_.Name -eq $file1.Name }}
-
-# Add into the log the result
-log "Number of fusion to do: $($commonfiles.count)"
-
-# Process to the merge
-Foreach ($file in $commonfiles) {
-    merge @($file) $SERVER_RESULT
-
-    # Add into log the result
-    log "Files merged : $($file)"
+    else {
+        # Increment the different files count and log the file name
+        $differentFilesCount++
+        Write-Host "Different files found: $($file1.Name)"
+    }
 }
 
-# Calculate script execution time
-$endTime = Get-Date
-$executionTime = New-TimeSpan -Start $startTime -End $endTime
-
-# Append the execution time to the log
-log "Script done in $($executionTime.ToString())"
-
-#endregion
+Write-Host "CSV files merged successfully. Final CSV file created at: $finalCsvPath"
+Write-Host "Number of identical files: $identicalFilesCount"
+Write-Host "Number of different files: $differentFilesCount"
