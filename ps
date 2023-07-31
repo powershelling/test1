@@ -80,9 +80,6 @@ function merge ($filelist, $SERVER_RESULT){
 
 #region OPS
 
-# Start measuring script execution time
-$startTime = Get-Date
-
 # Get a list of each files
 $server1files = Get-childitem $SERVER_ONE
 $server2files = Get-childitem $SERVER_TWO
@@ -107,18 +104,15 @@ log "Number of fusion to do: $($commonfiles.count)"
 Foreach ($file in $commonfiles) {
     $server1files = Join-path $SERVER_ONE $file.name
     $server2files = Join-path $SERVER_TWO $file.name
-
-    merge @($server1files, $server2files) $destination
+    
+    $filelist = @($server1files, $server2files)  # Déclaration de la variable $filelist contenant les fichiers à fusionner
+    
+    merge $filelist $SERVER_RESULT  # Appel de la fonction 'merge' avec les paramètres nécessaires
 
     #add into log the result
     log "Files merged : $($server1files), $($server2files)"
 }
 
-# Calculate script execution time
-$endTime = Get-Date
-$executionTime = New-TimeSpan -Start $startTime -End $endTime
-
-# Append the execution time to the log
-log "Script done in $($executionTime.ToString())"
+write-output "Script done in "
 
 #endregion
