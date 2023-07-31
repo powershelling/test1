@@ -13,7 +13,7 @@ if (Test-Path $finalCsvPath) {
 # Get the list of CSV files from each folder
 $csvFiles1 = Get-ChildItem -Path $folderPath1 -Filter "*.csv"
 $csvFiles2 = Get-ChildItem -Path $folderPath2 -Filter "*.csv"
-
+#test
 # Log the names of CSV files in folder 1 and folder 2
 Write-Host "CSV files in Folder 1: $($csvFiles1 -join ', ')"
 Write-Host "CSV files in Folder 2: $($csvFiles2 -join ', ')"
