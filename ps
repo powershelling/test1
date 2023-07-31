@@ -5,21 +5,15 @@
 # Language: Powershell 
 ###########################
 
-
-
-
 <#
 .SYNOPSIS
-     This script will check if two path on two servers are available, and merge files with the same name in UTF8 and export the result into a destination path
-
-
-
+     This script will check if two paths on two servers are available, and merge files with the same name in UTF8 and export the result into a destination path
 
 .DESCRIPTION
     This script will:
-     Check if path is available
+     Check if the paths are available
      Create a list of file with the same name in a log 
-     Merge file
+     Merge files
 
 .VERSION
     0.1
@@ -34,31 +28,27 @@
     FQDN path of second server
 
 .PARAMETER SERVER_RESULT
-    FQDN path of destination server (local)
+    FQDN path of the destination server (local)
 
+.PARAMETER CSV_FILE
+    File containing the list of filenames to merge
 #>
-
-
-
 
 #region VARIABLE
 
 $SERVER_ONE = "to do"
 $SERVER_TWO = "to do"
 $SERVER_RESULT = "to do"
+$CSV_FILE = "path\to\your\csvfile.csv"
 
 $logfilepath = "to add\$date.log"
 #endregion
-
-
-
 
 #region FUNCTION
 
 function log {
     param([string]$message)
 }
-
 
 function merge ($filelist, $SERVER_RESULT){
     $content = Get-content $filelist[0]
@@ -76,43 +66,44 @@ function merge ($filelist, $SERVER_RESULT){
 }   
 #endregion
 
-
-
 #region OPS
 
+# Start measuring script execution time
+$startTime = Get-Date
+
+# Import the CSV file containing the list of filenames
+$fileList = Import-Csv -Path $CSV_FILE | ForEach-Object { $_.FileName }
+
 # Get a list of each files
-$server1files = Get-childitem $SERVER_ONE
-$server2files = Get-childitem $SERVER_TWO
+$server1files = $fileList | ForEach-Object { Join-Path $SERVER_ONE $_ }
+$server2files = $fileList | ForEach-Object { Join-Path $SERVER_TWO $_ }
 
-
-# Write into log file all files detected
+# Write into the log file all files detected
 log "List of files on Server One: "
-log ($server1files | Foreach-object {$_.Name})
+log ($server1files | ForEach-Object { $_ })
 
 log "List of files on Server Two: "
-log ($server2files | Foreach-object {$_.Name})
-
+log ($server2files | ForEach-Object { $_ })
 
 # List file with the same name
-$commonfiles = $server1files | Where-object { $file1 = $_; $server2files | Where-object { $_.Name -eq $file1.Name}}
+$commonfiles = $server1files | Where-Object { $file1 = $_; $server2files | Where-Object { $_.Name -eq $file1.Name }}
 
-# Add into log the result
+# Add into the log the result
 log "Number of fusion to do: $($commonfiles.count)"
-
 
 # Process to the merge
 Foreach ($file in $commonfiles) {
-    $server1files = Join-path $SERVER_ONE $file.name
-    $server2files = Join-path $SERVER_TWO $file.name
-    
-    $filelist = @($server1files, $server2files)  # Déclaration de la variable $filelist contenant les fichiers à fusionner
-    
-    merge $filelist $SERVER_RESULT  # Appel de la fonction 'merge' avec les paramètres nécessaires
+    merge @($file) $SERVER_RESULT
 
-    #add into log the result
-    log "Files merged : $($server1files), $($server2files)"
+    # Add into log the result
+    log "Files merged : $($file)"
 }
 
-write-output "Script done in "
+# Calculate script execution time
+$endTime = Get-Date
+$executionTime = New-TimeSpan -Start $startTime -End $endTime
+
+# Append the execution time to the log
+log "Script done in $($executionTime.ToString())"
 
 #endregion
